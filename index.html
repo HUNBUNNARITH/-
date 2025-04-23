@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>គណនាផ្ទៃដី និងបង្ហាញរូបរាង (UTM)</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    body {
+      font-family: 'Khmer OS Siemreap', Arial, sans-serif;
+      padding: 20px;
+      max-width: 800px;
+      margin: auto;
+      font-size: 16px;
+    }
+
+    h2 {
+      font-family: 'Khmer OS Muol Light', 'Khmer OS Battambang', Arial, sans-serif;
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 24px;
+    }
+
+    .subtitle {
+      font-family: 'Khmer OS Siemreap', Arial, sans-serif;
+      font-size: 14px;
+      text-align: center;
+      margin-top: -5px;
+      margin-bottom: 10px;
+      color: #555;
+    }
+
+    .instruction {
+      font-family: 'Khmer OS Siemreap', Arial, sans-serif;
+      font-size: 16px;
+      text-align: center;
+      margin: 10px 0 15px;
+      color: #333;
+    }
+
+    .table-container {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      min-width: 500px;
+      border-collapse: collapse;
+      margin-bottom: 10px;
+    }
+
+    th, td {
+      border: 1px solid #ccc;
+      padding: 6px;
+      text-align: center;
+    }
+
+    input[type="number"] {
+      width: 100%;
+      padding: 10px;
+      font-size: 16px;
+      box-sizing: border-box;
+    }
+
+    button {
+      font-family: 'Khmer OS Siemreap';
+      width: 100%;
+      padding: 12px;
+      font-size: 18px;
+      background: #0066cc;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    #result {
+      margin-top: 10px;
+      font-size: 18px;
+      text-align: center;
+      color: #333;
+    }
+
+    #map {
+      margin-top: 20px;
+      height: 50vh;
+    }
+  </style>
+</head>
+<body>
+
+<h2>គណនាផ្ទៃដី (ជា​ហិកតា) និងបង្ហាញរូបរាងតាម UTM</h2>
+<p class="subtitle">(បង្កើតដោយ៖ លោក ហ៊ុន ប៊ុណ្ណារិទ្ធិ និងលោក ឌី សុធី)</p>
+<p class="instruction">
+  សូមបញ្ចូលតម្លៃ UTM នៃ X និង Y ក្នុងតារាងខាងក្រោម។ ត្រូវការយ៉ាងតិចចំនួន ៣ចំណុចដើម្បីគណនាបាន។
+</p>
+
+<div class="table-container">
+  <table>
+    <thead>
+      <tr>
+        <th>ល.រ</th>
+        <th>X (Easting)</th>
+        <th>Y (Northing)</th>
+      </tr>
+    </thead>
+    <tbody id="coordTable"></tbody>
+  </table>
+</div>
+
+<button onclick="calculateAndDraw()">គណនាផ្ទៃដី និងបង្ហាញរូបរាង</button>
+
+<div id="result"></div>
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.7.5/proj4.js"></script>
+<script>
+  // បង្កើតជួរតារាងចំនួន 10
+  const table = document.getElementById("coordTable");
+  for (let i = 1; i <= 10; i++) {
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>${i}</td>
+      <td><input type="number" id="x${i}" step="any" placeholder="X ${i}"></td>
+      <td><input type="number" id="y${i}" step="any" placeholder="Y ${i}"></td>
+    `;
+    table.appendChild(row);
+  }
+
+  // កំណត់ UTM Zone 48N
+  proj4.defs("WGS84_UTM_48N", "+proj=utm +zone=48 +datum=WGS84 +units=m +no_defs");
+
+  let map = L.map('map').setView([13, 104], 6);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 18
+  }).addTo(map);
+
+  let polygonLayer = null;
+
+  function calculateAndDraw() {
+    if (polygonLayer) map.removeLayer(polygonLayer);
+
+    const utmCoords = [];
+    const latlngs = [];
+
+    for (let i = 1; i <= 10; i++) {
+      const x = parseFloat(document.getElementById(`x${i}`).value);
+      const y = parseFloat(document.getElementById(`y${i}`).value);
+      if (!isNaN(x) && !isNaN(y)) {
+        utmCoords.push([x, y]);
+        const [lon, lat] = proj4("WGS84_UTM_48N", "WGS84", [x, y]);
+        latlngs.push([lat, lon]);
+      }
+    }
+
+    if (utmCoords.length < 3) {
+      document.getElementById("result").innerText = "ត្រូវការយ៉ាងហោចណាស់ 3 ចំណុច ដើម្បីគណនាផ្ទៃ។";
+      return;
+    }
+
+    // Shoelace formula
+    let area = 0;
+    for (let i = 0; i < utmCoords.length; i++) {
+      const [x1, y1] = utmCoords[i];
+      const [x2, y2] = utmCoords[(i + 1) % utmCoords.length];
+      area += (x1 * y2 - x2 * y1);
+    }
+
+    const sqm = Math.abs(area / 2);
+    const hectares = sqm / 10000;
+    document.getElementById("result").innerText = `ផ្ទៃដីសរុប: ${hectares.toFixed(2)} ហិកតា`;
+
+    // Draw polygon
+    polygonLayer = L.polygon(latlngs, { color: 'blue' }).addTo(map);
+    map.fitBounds(polygonLayer.getBounds());
+  }
+</script>
+
+</body>
+</html>
