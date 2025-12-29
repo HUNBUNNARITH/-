@@ -39,7 +39,7 @@
       color: #333;
     }
 
-    /* ===== BOXED TABLE STYLE (RESTORED) ===== */
+    /* ===== Boxed table style ===== */
     .table-container {
       width: 100%;
       overflow-x: hidden;
@@ -106,160 +106,161 @@
 
 <body>
 
-<h2>គណនាផ្ទៃដី (ជា​ហិកតា) និងបង្ហាញរូបរាងតាម UTM</h2>
-<p class="subtitle">(បង្កើតដោយ៖ លោក ហ៊ុន ប៊ុណ្ណារិទ្ធិ និងលោក ឌី សុធី)</p>
-<p class="instruction">
-  សូមបញ្ចូលតម្លៃ UTM នៃ X និង Y ក្នុងតារាងខាងក្រោម (យ៉ាងតិច ៣ ចំណុច)
-</p>
+  <h2>គណនាផ្ទៃដី (ជា​ហិកតា) និងបង្ហាញរូបរាងតាម UTM</h2>
+  <p class="subtitle">(បង្កើតដោយ៖ លោក ហ៊ុន ប៊ុណ្ណារិទ្ធិ និងលោក ឌី សុធី)</p>
+  <p class="instruction">
+    សូមបញ្ចូលតម្លៃ UTM នៃ X និង Y ក្នុងតារាងខាងក្រោម (យ៉ាងតិច ៣ ចំណុច)
+  </p>
 
-<div class="table-container">
-  <table>
-    <thead>
-      <tr>
-        <th>ល.រ</th>
-        <th>X (Easting)</th>
-        <th>Y (Northing)</th>
-      </tr>
-    </thead>
-    <tbody id="coordTable"></tbody>
-  </table>
-</div>
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>ល.រ</th>
+          <th>X (Easting)</th>
+          <th>Y (Northing)</th>
+        </tr>
+      </thead>
+      <tbody id="coordTable"></tbody>
+    </table>
+  </div>
 
-<button onclick="calculateAndDraw()">គណនាផ្ទៃដី និងបង្ហាញរូបរាង</button>
+  <button onclick="calculateAndDraw()">គណនាផ្ទៃដី និងបង្ហាញរូបរាង</button>
 
-<div id="result"></div>
-<div id="map"></div>
+  <div id="result"></div>
+  <div id="map"></div>
 
-<!-- JS libraries -->
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.7.5/proj4.js"></script>
+  <!-- JS libraries -->
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.7.5/proj4.js"></script>
 
-<script>
-/* =====================================================
-   1) Build coordinate input table
-===================================================== */
-const MAX_POINTS = 10;
-const table = document.getElementById("coordTable");
+  <script>
+    /* =====================================================
+       1) Build coordinate input table
+    ===================================================== */
+    const MAX_POINTS = 10;
+    const table = document.getElementById("coordTable");
 
-for (let i = 1; i <= MAX_POINTS; i++) {
-  const row = document.createElement("tr");
-  row.innerHTML = `
-    <td>${i}</td>
-    <td><input type="number" id="x${i}" step="any"></td>
-    <td><input type="number" id="y${i}" step="any"></td>
-  `;
-  table.appendChild(row);
-}
-
-/* =====================================================
-   2) Projection: UTM Zone 48N
-===================================================== */
-proj4.defs(
-  "UTM48N",
-  "+proj=utm +zone=48 +datum=WGS84 +units=m +no_defs"
-);
-
-/* =====================================================
-   3) Map + Topographic basemap
-===================================================== */
-const map = L.map("map").setView([12.6, 106.0], 8);
-
-L.tileLayer(
-  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Terrain_Base/MapServer/tile/{z}/{y}/{x}",
-  {
-    maxZoom: 13,
-    attribution: "© Esri"
-  }
-).addTo(map);
-
-// =====================================================
-// 4) Load GeoJSON layers
-// =====================================================
-
-// ---- KT Protected Area ----
-fetch("KT_PA.Geojson")
-  .then(r => r.json())
-  .then(data => {
-    L.geoJSON(data, {
-      style: {
-        color: "#008000",   // green boundary
-        weight: 2,
-        fill: false
-      }
-    }).addTo(map);
-  })
-  .catch(err => {
-    console.error("Failed to load KT_PA.Geojson:", err);
-  });
-
-// ---- Kratie Boundary ----
-fetch("Kratie_Boundary.geojson")
-  .then(r => r.json())
-  .then(data => {
-    L.geoJSON(data, {
-      style: {
-        color: "#000000",   // black boundary
-        weight: 2,
-        fill: false
-      }
-    }).addTo(map);
-  })
-  .catch(err => {
-    console.error("Failed to load Kratie boundary:", err);
-  });
-
-   5) Polygon drawing + area calculation
-===================================================== */
-let polygonLayer = null;
-
-function calculateAndDraw() {
-
-  if (polygonLayer) map.removeLayer(polygonLayer);
-
-  const utm = [];
-  const latlngs = [];
-
-  for (let i = 1; i <= MAX_POINTS; i++) {
-    const x = parseFloat(document.getElementById(`x${i}`).value);
-    const y = parseFloat(document.getElementById(`y${i}`).value);
-
-    if (!isNaN(x) && !isNaN(y)) {
-      utm.push([x, y]);
-
-      const [lon, lat] = proj4("UTM48N", "WGS84", [x, y]);
-      latlngs.push([lat, lon]);
+    for (let i = 1; i <= MAX_POINTS; i++) {
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${i}</td>
+        <td><input type="number" id="x${i}" step="any"></td>
+        <td><input type="number" id="y${i}" step="any"></td>
+      `;
+      table.appendChild(row);
     }
-  }
 
-  if (utm.length < 3) {
-    document.getElementById("result").innerText =
-      "ត្រូវការយ៉ាងហោចណាស់ 3 ចំណុច";
-    return;
-  }
+    /* =====================================================
+       2) Projection: UTM Zone 48N (WGS84)
+    ===================================================== */
+    proj4.defs(
+      "UTM48N",
+      "+proj=utm +zone=48 +datum=WGS84 +units=m +no_defs"
+    );
 
-  let area2 = 0;
-  for (let i = 0; i < utm.length; i++) {
-    const [x1, y1] = utm[i];
-    const [x2, y2] = utm[(i + 1) % utm.length];
-    area2 += (x1 * y2 - x2 * y1);
-  }
+    /* =====================================================
+       3) Map + Topographic basemap (Esri Terrain Base)
+    ===================================================== */
+    const map = L.map("map").setView([12.6, 106.0], 8);
 
-  const sqm = Math.abs(area2 / 2);
-  const ha = sqm / 10000;
+    L.tileLayer(
+      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Terrain_Base/MapServer/tile/{z}/{y}/{x}",
+      {
+        maxZoom: 13,
+        attribution: "© Esri"
+      }
+    ).addTo(map);
 
-  document.getElementById("result").innerText =
-    `ផ្ទៃដីសរុប: ${ha.toFixed(2)} ហិកតា`;
+    /* =====================================================
+       4) Load GeoJSON layers (from same repo folder)
+    ===================================================== */
 
-  polygonLayer = L.polygon(latlngs, {
-    color: "blue",
-    weight: 2
-  }).addTo(map);
+    // ---- KT Protected Area ----
+    fetch("KT_PA.Geojson")
+      .then(r => r.json())
+      .then(data => {
+        L.geoJSON(data, {
+          style: {
+            color: "#008000",   // green boundary
+            weight: 2,
+            fill: false
+          }
+        }).addTo(map);
+      })
+      .catch(err => {
+        console.error("Failed to load KT_PA.Geojson:", err);
+      });
 
-  polygonLayer.bringToFront();
-  map.fitBounds(polygonLayer.getBounds());
-}
-</script>
+    // ---- Kratie Boundary ----
+    fetch("Kratie_Boundary.geojson")
+      .then(r => r.json())
+      .then(data => {
+        L.geoJSON(data, {
+          style: {
+            color: "#000000",   // black boundary
+            weight: 2,
+            fill: false
+          }
+        }).addTo(map);
+      })
+      .catch(err => {
+        console.error("Failed to load Kratie_Boundary.geojson:", err);
+      });
+
+    /* =====================================================
+       5) Polygon drawing + area calculation (ha)
+    ===================================================== */
+    let polygonLayer = null;
+
+    function calculateAndDraw() {
+      if (polygonLayer) map.removeLayer(polygonLayer);
+
+      const utm = [];
+      const latlngs = [];
+
+      for (let i = 1; i <= MAX_POINTS; i++) {
+        const x = parseFloat(document.getElementById(`x${i}`).value);
+        const y = parseFloat(document.getElementById(`y${i}`).value);
+
+        if (!isNaN(x) && !isNaN(y)) {
+          utm.push([x, y]);
+
+          // Convert UTM -> WGS84 (lon, lat)
+          const [lon, lat] = proj4("UTM48N", "WGS84", [x, y]);
+          latlngs.push([lat, lon]);
+        }
+      }
+
+      if (utm.length < 3) {
+        document.getElementById("result").innerText =
+          "ត្រូវការយ៉ាងហោចណាស់ 3 ចំណុច";
+        return;
+      }
+
+      // Shoelace formula (area in m²)
+      let area2 = 0;
+      for (let i = 0; i < utm.length; i++) {
+        const [x1, y1] = utm[i];
+        const [x2, y2] = utm[(i + 1) % utm.length];
+        area2 += (x1 * y2 - x2 * y1);
+      }
+
+      const sqm = Math.abs(area2 / 2);
+      const ha = sqm / 10000;
+
+      document.getElementById("result").innerText =
+        `ផ្ទៃដីសរុប: ${ha.toFixed(2)} ហិកតា`;
+
+      polygonLayer = L.polygon(latlngs, {
+        color: "blue",
+        weight: 2
+      }).addTo(map);
+
+      polygonLayer.bringToFront();
+      map.fitBounds(polygonLayer.getBounds());
+    }
+  </script>
 
 </body>
 </html>
-
