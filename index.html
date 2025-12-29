@@ -128,34 +128,9 @@
 
   proj4.defs("WGS84_UTM_48N", "+proj=utm +zone=48 +datum=WGS84 +units=m +no_defs");
 
-
-  const osm = L.tileLayer(
-  'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-  { maxZoom: 19, attribution: '© OpenStreetMap' }
-);
-
-const esriSat = L.tileLayer(
-  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-  { maxZoom: 19, attribution: '© Esri' }
-);
-
-const esriTerrain = L.tileLayer(
-  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Terrain_Base/MapServer/tile/{z}/{y}/{x}',
-  { maxZoom: 13, attribution: '© Esri' }
-);
-
-// Default basemap
-osm.addTo(map);
-
-// Layer control
-L.control.layers(
-  {
-    "OpenStreetMap": osm,
-    "Satellite (Esri)": esriSat,
-    "Terrain (Esri)": esriTerrain
-  }
-).addTo(map);
-
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 18
+}).addTo(map);
 
   let polygonLayer = null;
 
