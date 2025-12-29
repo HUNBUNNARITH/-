@@ -177,7 +177,7 @@
     ===================================================== */
 
     // ---- KT Protected Area ----
-    fetch("KT_PA.Geojson")
+    fetch("KT_PA.geojson")
       .then(r => r.json())
       .then(data => {
         L.geoJSON(data, {
@@ -264,3 +264,4 @@
 
 </body>
 </html>
+
