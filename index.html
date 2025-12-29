@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>គណនាផ្ទៃដី និងបង្ហាញរូបរាង (UTM)</title>
 
-  <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 
   <style>
@@ -25,6 +24,7 @@
     }
 
     .subtitle {
+      font-family: 'Khmer OS Siemreap', Arial, sans-serif;
       font-size: 14px;
       text-align: center;
       margin-top: -5px;
@@ -33,43 +33,56 @@
     }
 
     .instruction {
+      font-family: 'Khmer OS Siemreap', Arial, sans-serif;
       font-size: 16px;
       text-align: center;
       margin: 10px 0 15px;
       color: #333;
     }
 
+    /* ===== BOX LOOK (like your old nice one) ===== */
     .table-container {
       width: 100%;
       overflow-x: hidden;
       margin-bottom: 10px;
       border: 1px solid #ccc;
-      padding: 8px;
-      border-radius: 4px;
+      border-radius: 6px;
       background: #fafafa;
+      padding: 10px;
+      box-sizing: border-box;
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
       table-layout: fixed;
+      background: #fff;
     }
 
     th, td {
       border: 1px solid #ccc;
       padding: 6px;
       text-align: center;
-      background: #fff;
+      word-wrap: break-word;
     }
 
     th {
       background: #f0f0f0;
+      font-weight: 600;
     }
 
     input[type="number"] {
       width: 100%;
-      padding: 8px;
-      font-size: 15px;
+      padding: 10px;         /* restored */
+      font-size: 16px;       /* restored */
+      box-sizing: border-box;
+      border: 1px solid #bbb;
+      border-radius: 4px;
+      outline: none;
+    }
+
+    input[type="number"]:focus {
+      border-color: #0066cc;
     }
 
     button {
@@ -81,13 +94,18 @@
       color: white;
       border: none;
       cursor: pointer;
-      border-radius: 4px;
+      border-radius: 6px;
+    }
+
+    button:hover {
+      filter: brightness(0.95);
     }
 
     #result {
       margin-top: 10px;
       font-size: 18px;
       text-align: center;
+      color: #333;
     }
 
     #map {
@@ -95,138 +113,154 @@
       height: 50vh;
       min-height: 350px;
       border: 1px solid #ccc;
-      border-radius: 4px;
+      border-radius: 6px;
+      overflow: hidden;
     }
   </style>
 </head>
 
 <body>
 
-<h2>គណនាផ្ទៃដី (ជា​ហិកតា) និងបង្ហាញរូបរាងតាម UTM</h2>
-<p class="subtitle">(បង្កើតដោយ៖ លោក ហ៊ុន ប៊ុណ្ណារិទ្ធិ និងលោក ឌី សុធី)</p>
-<p class="instruction">
-  សូមបញ្ចូលតម្លៃ UTM នៃ X និង Y ក្នុងតារាងខាងក្រោម (យ៉ាងតិច ៣ ចំណុច)
-</p>
+  <h2>គណនាផ្ទៃដី (ជា​ហិកតា) និងបង្ហាញរូបរាងតាម UTM</h2>
+  <p class="subtitle">(បង្កើតដោយ៖ លោក ហ៊ុន ប៊ុណ្ណារិទ្ធិ និងលោក ឌី សុធី)</p>
+  <p class="instruction">
+    សូមបញ្ចូលតម្លៃ UTM នៃ X និង Y ក្នុងតារាងខាងក្រោម (យ៉ាងតិច ៣ ចំណុច)
+  </p>
 
-<div class="table-container">
-  <table>
-    <thead>
-      <tr>
-        <th>ល.រ</th>
-        <th>X (Easting)</th>
-        <th>Y (Northing)</th>
-      </tr>
-    </thead>
-    <tbody id="coordTable"></tbody>
-  </table>
-</div>
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>ល.រ</th>
+          <th>X (Easting)</th>
+          <th>Y (Northing)</th>
+        </tr>
+      </thead>
+      <tbody id="coordTable"></tbody>
+    </table>
+  </div>
 
-<button onclick="calculateAndDraw()">គណនាផ្ទៃដី និងបង្ហាញរូបរាង</button>
+  <button onclick="calculateAndDraw()">គណនាផ្ទៃដី និងបង្ហាញរូបរាង</button>
 
-<div id="result"></div>
-<div id="map"></div>
+  <div id="result"></div>
+  <div id="map"></div>
 
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.7.5/proj4.js"></script>
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.7.5/proj4.js"></script>
 
-<script>
-const MAX_POINTS = 10;
-const table = document.getElementById("coordTable");
+  <script>
+    /* =====================================================
+       1) Build coordinate input table
+    ===================================================== */
+    const MAX_POINTS = 10;
+    const table = document.getElementById("coordTable");
 
-for (let i = 1; i <= MAX_POINTS; i++) {
-  const row = document.createElement("tr");
-  row.innerHTML = `
-    <td>${i}</td>
-    <td><input type="number" id="x${i}" step="any"></td>
-    <td><input type="number" id="y${i}" step="any"></td>
-  `;
-  table.appendChild(row);
-}
-
-proj4.defs(
-  "UTM48N",
-  "+proj=utm +zone=48 +datum=WGS84 +units=m +no_defs"
-);
-
-const map = L.map("map").setView([12.6, 106.0], 8);
-
-L.tileLayer(
-  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-  {
-    maxZoom: 19,
-    attribution: "© Esri"
-  }
-).addTo(map);
-
-// Kratie Boundary
-fetch("Kratie_Boundary.geojson")
-  .then(r => r.json())
-  .then(data => {
-    L.geoJSON(data, {
-      style: { color: "#000000", weight: 2, fill: false }
-    }).addTo(map);
-  });
-
-// KT Protected Area
-fetch("KT_PA.geojson")
-  .then(r => r.json())
-  .then(data => {
-    L.geoJSON(data, {
-      style: { color: "#FFD700", weight: 0.5, fill: false }
-    }).addTo(map);
-  });
-
-let polygonLayer = null;
-
-function calculateAndDraw() {
-  if (polygonLayer) map.removeLayer(polygonLayer);
-
-  const utm = [];
-  const latlngs = [];
-
-  for (let i = 1; i <= MAX_POINTS; i++) {
-    const x = parseFloat(document.getElementById(`x${i}`).value);
-    const y = parseFloat(document.getElementById(`y${i}`).value);
-
-    if (!isNaN(x) && !isNaN(y)) {
-      utm.push([x, y]);
-      const [lon, lat] = proj4("UTM48N", "WGS84", [x, y]);
-      latlngs.push([lat, lon]);
+    for (let i = 1; i <= MAX_POINTS; i++) {
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${i}</td>
+        <td><input type="number" id="x${i}" step="any" placeholder="X ${i}"></td>
+        <td><input type="number" id="y${i}" step="any" placeholder="Y ${i}"></td>
+      `;
+      table.appendChild(row);
     }
-  }
 
-  if (utm.length < 3) {
-    document.getElementById("result").innerText =
-      "ត្រូវការយ៉ាងហោចណាស់ 3 ចំណុច";
-    return;
-  }
+    /* =====================================================
+       2) Projection: UTM Zone 48N (WGS84)
+    ===================================================== */
+    proj4.defs(
+      "UTM48N",
+      "+proj=utm +zone=48 +datum=WGS84 +units=m +no_defs"
+    );
 
-  let area2 = 0;
-  for (let i = 0; i < utm.length; i++) {
-    const [x1, y1] = utm[i];
-    const [x2, y2] = utm[(i + 1) % utm.length];
-    area2 += (x1 * y2 - x2 * y1);
-  }
+    /* =====================================================
+       3) Map + Imagery basemap
+    ===================================================== */
+    const map = L.map("map").setView([12.6, 106.0], 8);
 
-  const sqm = Math.abs(area2 / 2);
-  const ha = sqm / 10000;
+    L.tileLayer(
+      "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      {
+        maxZoom: 19,
+        attribution: "© Esri"
+      }
+    ).addTo(map);
 
-  document.getElementById("result").innerText =
-    `ផ្ទៃដីសរុប: ${ha.toFixed(2)} ហិកតា`;
+    /* =====================================================
+       4) Load GeoJSON layers
+    ===================================================== */
 
-  polygonLayer = L.polygon(latlngs, {
-    color: "blue",
-    weight: 2
-  }).addTo(map);
+    // Kratie Boundary
+    fetch("Kratie_Boundary.geojson")
+      .then(r => r.json())
+      .then(data => {
+        L.geoJSON(data, {
+          style: { color: "#000000", weight: 2, fill: false }
+        }).addTo(map);
+      })
+      .catch(err => console.error("Failed to load Kratie_Boundary.geojson:", err));
 
-  polygonLayer.bringToFront();
+    // KT Protected Area
+    fetch("KT_PA.geojson")
+      .then(r => r.json())
+      .then(data => {
+        L.geoJSON(data, {
+          style: { color: "#FFD700", weight: 0.8, fill: false }
+        }).addTo(map);
+      })
+      .catch(err => console.error("Failed to load KT_PA.geojson:", err));
 
-  map.fitBounds(polygonLayer.getBounds(), {
-    padding: [30, 30],
-    maxZoom: 19
-  });
-}
-</script>
+    /* =====================================================
+       5) Polygon drawing + area calculation (ha)
+    ===================================================== */
+    let polygonLayer = null;
+
+    function calculateAndDraw() {
+      if (polygonLayer) map.removeLayer(polygonLayer);
+
+      const utm = [];
+      const latlngs = [];
+
+      for (let i = 1; i <= MAX_POINTS; i++) {
+        const x = parseFloat(document.getElementById(`x${i}`).value);
+        const y = parseFloat(document.getElementById(`y${i}`).value);
+
+        if (!isNaN(x) && !isNaN(y)) {
+          utm.push([x, y]);
+          const [lon, lat] = proj4("UTM48N", "WGS84", [x, y]);
+          latlngs.push([lat, lon]);
+        }
+      }
+
+      if (utm.length < 3) {
+        document.getElementById("result").innerText =
+          "ត្រូវការយ៉ាងហោចណាស់ 3 ចំណុច";
+        return;
+      }
+
+      let area2 = 0;
+      for (let i = 0; i < utm.length; i++) {
+        const [x1, y1] = utm[i];
+        const [x2, y2] = utm[(i + 1) % utm.length];
+        area2 += (x1 * y2 - x2 * y1);
+      }
+
+      const sqm = Math.abs(area2 / 2);
+      const ha = sqm / 10000;
+
+      document.getElementById("result").innerText =
+        `ផ្ទៃដីសរុប: ${ha.toFixed(2)} ហិកតា`;
+
+      polygonLayer = L.polygon(latlngs, { color: "blue", weight: 2 }).addTo(map);
+      polygonLayer.bringToFront();
+
+      // Better zoom for small polygons
+      map.fitBounds(polygonLayer.getBounds(), {
+        padding: [30, 30],
+        maxZoom: 19
+      });
+    }
+  </script>
 
 </body>
 </html>
