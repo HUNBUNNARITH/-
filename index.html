@@ -128,9 +128,10 @@
 
   proj4.defs("WGS84_UTM_48N", "+proj=utm +zone=48 +datum=WGS84 +units=m +no_defs");
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  maxZoom: 18
-}).addTo(map);
+  let map = L.map('map').setView([13, 104], 6);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 18
+  }).addTo(map);
 
   let polygonLayer = null;
 
@@ -173,4 +174,3 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 
 </body>
 </html>
-
