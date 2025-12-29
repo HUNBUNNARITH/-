@@ -4,7 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>គណនាផ្ទៃដី និងបង្ហាញរូបរាង (UTM)</title>
+
+  <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
   <style>
     body {
       font-family: 'Khmer OS Siemreap', Arial, sans-serif;
@@ -22,7 +25,6 @@
     }
 
     .subtitle {
-      font-family: 'Khmer OS Siemreap', Arial, sans-serif;
       font-size: 14px;
       text-align: center;
       margin-top: -5px;
@@ -31,7 +33,6 @@
     }
 
     .instruction {
-      font-family: 'Khmer OS Siemreap', Arial, sans-serif;
       font-size: 16px;
       text-align: center;
       margin: 10px 0 15px;
@@ -65,7 +66,7 @@
     }
 
     button {
-      font-family: 'Khmer OS Siemreap';
+      font-family: 'Khmer OS Siemreap', Arial, sans-serif;
       width: 100%;
       padding: 12px;
       font-size: 18px;
@@ -85,116 +86,152 @@
     #map {
       margin-top: 20px;
       height: 50vh;
+      min-height: 350px;
     }
   </style>
 </head>
+
 <body>
+  <h2>គណនាផ្ទៃដី (ជា​ហិកតា) និងបង្ហាញរូបរាងតាម UTM</h2>
+  <p class="subtitle">(បង្កើតដោយ៖ លោក ហ៊ុន ប៊ុណ្ណារិទ្ធិ និងលោក ឌី សុធី)</p>
+  <p class="instruction">
+    សូមបញ្ចូលតម្លៃ UTM នៃ X និង Y ក្នុងតារាងខាងក្រោម។ ត្រូវការយ៉ាងតិចចំនួន ៣ ចំណុច ដើម្បីគណនាបាន។
+  </p>
 
-<h2>គណនាផ្ទៃដី (ជា​ហិកតា) និងបង្ហាញរូបរាងតាម UTM</h2>
-<p class="subtitle">(បង្កើតដោយ៖ លោក ហ៊ុន ប៊ុណ្ណារិទ្ធិ និងលោក ឌី សុធី)</p>
-<p class="instruction">សូមបញ្ចូលតម្លៃ UTM នៃ X និង Y ក្នុងតារាងខាងក្រោម។ ត្រូវការយ៉ាងតិចចំនួន ៣ ចំណុច ដើម្បីគណនាបាន។</p>
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>ល.រ</th>
+          <th>X (Easting)</th>
+          <th>Y (Northing)</th>
+        </tr>
+      </thead>
+      <tbody id="coordTable"></tbody>
+    </table>
+  </div>
 
-<div class="table-container">
-  <table>
-    <thead>
-      <tr>
-        <th>ល.រ</th>
-        <th>X (Easting)</th>
-        <th>Y (Northing)</th>
-      </tr>
-    </thead>
-    <tbody id="coordTable"></tbody>
-  </table>
-</div>
+  <button onclick="calculateAndDraw()">គណនាផ្ទៃដី និងបង្ហាញរូបរាង</button>
 
-<button onclick="calculateAndDraw()">គណនាផ្ទៃដី និងបង្ហាញរូបរាង</button>
+  <div id="result"></div>
+  <div id="map"></div>
 
-<div id="result"></div>
-<div id="map"></div>
+  <!-- Leaflet JS + Proj4JS -->
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.7.5/proj4.js"></script>
 
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.7.5/proj4.js"></script>
-<script>
-  const table = document.getElementById("coordTable");
-  for (let i = 1; i <= 10; i++) {
-    const row = document.createElement("tr");
-    row.innerHTML = `
-      <td>${i}</td>
-      <td><input type="number" id="x${i}" step="any" placeholder="X ${i}"></td>
-      <td><input type="number" id="y${i}" step="any" placeholder="Y ${i}"></td>
-    `;
-    table.appendChild(row);
-  }
+  <script>
+    // =========================
+    // 1) Build input table rows
+    // =========================
+    const table = document.getElementById("coordTable");
+    const MAX_POINTS = 10;
 
-  proj4.defs("WGS84_UTM_48N", "+proj=utm +zone=48 +datum=WGS84 +units=m +no_defs");
+    for (let i = 1; i <= MAX_POINTS; i++) {
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${i}</td>
+        <td><input type="number" id="x${i}" step="any" placeholder="X ${i}"></td>
+        <td><input type="number" id="y${i}" step="any" placeholder="Y ${i}"></td>
+      `;
+      table.appendChild(row);
+    }
 
-  let map = L.map('map').setView([13, 104], 6);
-  L.tileLayer(
-  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Terrain_Base/MapServer/tile/{z}/{y}/{x}',
-  {
-    maxZoom: 13,
-  }
-  ).addTo(map);
+    // =========================
+    // 2) Projection definition
+    // =========================
+    // UTM Zone 48N (WGS84)
+    proj4.defs("WGS84_UTM_48N", "+proj=utm +zone=48 +datum=WGS84 +units=m +no_defs");
 
-  // Country boundary style
-function countryStyle(feature) {
-  return {
-    color: '#000000',
-    weight: 1.5,
-    fill: false
-  };
-}
+    // =========================
+    // 3) Create map + Topo basemap (Esri Terrain Base)
+    // =========================
+    let map = L.map('map').setView([13, 104], 6);
 
-// Load country boundaries (Natural Earth)
-fetch('https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson')
-  .then(response => response.json())
-  .then(data => {
-    L.geoJSON(data, {
-      style: countryStyle
-    }).addTo(map);
-  });
-
-  let polygonLayer = null;
-
-  function calculateAndDraw() {
-    if (polygonLayer) map.removeLayer(polygonLayer);
-
-    const utmCoords = [];
-    const latlngs = [];
-
-    for (let i = 1; i <= 10; i++) {
-      const x = parseFloat(document.getElementById(`x${i}`).value);
-      const y = parseFloat(document.getElementById(`y${i}`).value);
-      if (!isNaN(x) && !isNaN(y)) {
-        utmCoords.push([x, y]);
-        const [lon, lat] = proj4("WGS84_UTM_48N", "WGS84", [x, y]);
-        latlngs.push([lat, lon]);
+    L.tileLayer(
+      'https://server.arcgisonline.com/ArcGIS/rest/services/World_Terrain_Base/MapServer/tile/{z}/{y}/{x}',
+      {
+        maxZoom: 13,
+        attribution: '© Esri'
       }
+    ).addTo(map);
+
+    // =========================
+    // 4) Country boundary layer (Cambodia + neighbors)
+    // =========================
+    function countryStyle(feature) {
+      return {
+        color: '#000000',
+        weight: 1.5,
+        fill: false
+      };
     }
 
-    if (utmCoords.length < 3) {
-      document.getElementById("result").innerText = "ត្រូវការយ៉ាងហោចណាស់ 3 ចំណុច ដើម្បីគណនាផ្ទៃ។";
-      return;
+    fetch('https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson')
+      .then(r => r.json())
+      .then(data => {
+        // Cambodia + neighbors: Cambodia, Thailand, Laos, Vietnam
+        const keep = new Set(["KHM", "THA", "LAO", "VNM"]);
+
+        const region = {
+          type: "FeatureCollection",
+          features: data.features.filter(f => keep.has(f.properties.ISO_A3))
+        };
+
+        L.geoJSON(region, { style: countryStyle }).addTo(map);
+      })
+      .catch(err => {
+        console.log("Failed to load country boundaries:", err);
+      });
+
+    // =========================
+    // 5) Polygon drawing + area calculation
+    // =========================
+    let polygonLayer = null;
+
+    function calculateAndDraw() {
+      if (polygonLayer) map.removeLayer(polygonLayer);
+
+      const utmCoords = [];
+      const latlngs = [];
+
+      for (let i = 1; i <= MAX_POINTS; i++) {
+        const x = parseFloat(document.getElementById(`x${i}`).value);
+        const y = parseFloat(document.getElementById(`y${i}`).value);
+
+        if (!isNaN(x) && !isNaN(y)) {
+          utmCoords.push([x, y]);
+
+          // Convert UTM -> WGS84 (lon, lat)
+          const [lon, lat] = proj4("WGS84_UTM_48N", "WGS84", [x, y]);
+          latlngs.push([lat, lon]);
+        }
+      }
+
+      if (utmCoords.length < 3) {
+        document.getElementById("result").innerText =
+          "ត្រូវការយ៉ាងហោចណាស់ 3 ចំណុច ដើម្បីគណនាផ្ទៃ។";
+        return;
+      }
+
+      // Shoelace formula for polygon area in square meters
+      let area2 = 0;
+      for (let i = 0; i < utmCoords.length; i++) {
+        const [x1, y1] = utmCoords[i];
+        const [x2, y2] = utmCoords[(i + 1) % utmCoords.length];
+        area2 += (x1 * y2 - x2 * y1);
+      }
+
+      const sqm = Math.abs(area2 / 2);
+      const hectares = sqm / 10000;
+
+      document.getElementById("result").innerText =
+        `ផ្ទៃដីសរុប: ${hectares.toFixed(2)} ហិកតា`;
+
+      polygonLayer = L.polygon(latlngs, { color: 'blue' }).addTo(map);
+      polygonLayer.bringToFront();   // keep polygon above boundaries
+      map.fitBounds(polygonLayer.getBounds());
     }
-
-    let area = 0;
-    for (let i = 0; i < utmCoords.length; i++) {
-      const [x1, y1] = utmCoords[i];
-      const [x2, y2] = utmCoords[(i + 1) % utmCoords.length];
-      area += (x1 * y2 - x2 * y1);
-    }
-
-    const sqm = Math.abs(area / 2);
-    const hectares = sqm / 10000;
-    document.getElementById("result").innerText = `ផ្ទៃដីសរុប: ${hectares.toFixed(2)} ហិកតា`;
-
-    polygonLayer = L.polygon(latlngs, { color: 'blue' }).addTo(map);
-    map.fitBounds(polygonLayer.getBounds());
-  }
-</script>
-
+  </script>
 </body>
 </html>
-
-
-
