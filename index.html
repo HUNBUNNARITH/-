@@ -130,12 +130,11 @@
 
   let map = L.map('map').setView([13, 104], 6);
   L.tileLayer(
-  'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+  'https://server.arcgisonline.com/ArcGIS/rest/services/World_Terrain_Base/MapServer/tile/{z}/{y}/{x}',
   {
-    maxZoom: 17,
+    maxZoom: 13,
   }
 ).addTo(map);
-
 
   let polygonLayer = null;
 
@@ -178,4 +177,5 @@
 
 </body>
 </html>
+
 
