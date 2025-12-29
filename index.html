@@ -134,7 +134,25 @@
   {
     maxZoom: 13,
   }
-).addTo(map);
+  ).addTo(map);
+
+  // Country boundary style
+function countryStyle(feature) {
+  return {
+    color: '#000000',
+    weight: 1.5,
+    fill: false
+  };
+}
+
+// Load country boundaries (Natural Earth)
+fetch('https://raw.githubusercontent.com/datasets/geo-countries/master/data/countries.geojson')
+  .then(response => response.json())
+  .then(data => {
+    L.geoJSON(data, {
+      style: countryStyle
+    }).addTo(map);
+  });
 
   let polygonLayer = null;
 
@@ -177,5 +195,6 @@
 
 </body>
 </html>
+
 
 
